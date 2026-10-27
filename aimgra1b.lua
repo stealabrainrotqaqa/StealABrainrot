@@ -1,5 +1,5 @@
 -- ============================================================
---  DELTA UYUMLU CANDY HUB: AIMBOT (BUTONLU) + AUTO GRAB (BUTONSUZ)
+--  CANDY HUB: AIMBOT (SAĞ ÜST - KÜÇÜK & SÜRÜKLENEBİLİR) + INSTA AUTO GRAB
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -8,7 +8,7 @@ local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local LP = Players.LocalPlayer
 
--- Eski olası GUI kalıntılarını temizle
+-- Eski kalıntıları temizle
 pcall(function()
 	if CoreGui:FindFirstChild("CandyAimbotMobileButton") then
 		CoreGui.CandyAimbotMobileButton:Destroy()
@@ -19,20 +19,16 @@ end)
 local aimbotSpeed = 58
 local autoBatEnabled = false
 local autoSwingEnabled = true
-local Conns = {aimbot = nil}
+local Conns = {aimbot = nil, autoGrab = nil}
 
--- Auto Grab (Auto Steal) Arka Plan Yapılandırması (Radius 10)
+-- ProximityPrompt tabanlı Auto Grab (Radius 10) Yapılandırması
 local CONFIG = {
-	AUTO_STEAL_ENABLED = true, -- Arkada otomatik çalışır (butonsuz)
-	HOLD_MIN = 1.3,
-	HOLD_MAX = 2.6,
-	ENTRY_DELAY = 0.3,
-	COOLDOWN = 0.05,
-	STEAL_RANGE = 10, -- 9-10 aralığı için 10 yapıldı
-	PRIME_RANGE = 80
+	AUTO_STEAL_ENABLED = true, -- Arka planda butonsuz otomatik çalışır
+	STEAL_RANGE = 10,
+	PRIME_RANGE = 40
 }
 
--- Delta Uyumlu Ekran ve Küçük Sürüklenebilir Buton Oluşturma
+-- Delta Uyumlu Ekran ve Sağ Üst Sürüklenebilir Buton
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "CandyAimbotMobileButton"
 screenGui.ResetOnSpawn = false
@@ -53,10 +49,10 @@ if not screenGui.Parent then
 	screenGui.Parent = LP:WaitForChild("PlayerGui")
 end
 
--- Küçük, Şık ve Sürüklenebilir Buton
+-- Sağ üst köşede küçük, şık ve sürüklenebilir AIM Butonu
 local btn = Instance.new("TextButton", screenGui)
-btn.Size = UDim2.new(0, 48, 0, 48) -- Küçük boyut
-btn.Position = UDim2.new(0, 40, 0, 180)
+btn.Size = UDim2.new(0, 48, 0, 48)
+btn.Position = UDim2.new(1, -65, 0, 20) -- Sağ üst köşe
 btn.BackgroundColor3 = Color3.fromRGB(9, 9, 12)
 btn.Text = "AIM"
 btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -64,7 +60,7 @@ btn.Font = Enum.Font.GothamBlack
 btn.TextSize = 11
 btn.AutoButtonColor = false
 btn.Active = true
-btn.Draggable = true -- Delta içinde kolayca sürüklenebilmesi için
+btn.Draggable = true -- İstediğin yere taşıyabilirsin
 
 local corner = Instance.new("UICorner", btn)
 corner.CornerRadius = UDim.new(0, 12)
@@ -73,7 +69,46 @@ local stroke = Instance.new("UIStroke", btn)
 stroke.Color = Color3.fromRGB(255, 92, 181)
 stroke.Thickness = 1.5
 
--- Aimbot Mantığı ve Fonksiyonları
+-- ============================================================
+--  1. INSTA AUTO GRAB (PROXIMITY PROMPT ANINDA TETİKLEME)
+-- ============================================================
+local function startInstaAutoGrab()
+	if Conns.autoGrab then return end
+	Conns.autoGrab = RunService.Heartbeat:Connect(function()
+		if not CONFIG.AUTO_STEAL_ENABLED then return end
+		local char = LP.Character
+		if not char then return end
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+
+		-- Oyun içindeki tüm ProximityPrompt'ları tara (Radius 10 içinde olanları anında tetikle)
+		for _, desc in ipairs(workspace:GetDescendants()) do
+			if desc:IsA("ProximityPrompt") then
+				local parentPart = desc.Parent
+				if parentPart and parentPart:IsA("BasePart") then
+					local dist = (parentPart.Position - hrp.Position).Magnitude
+					if dist <= CONFIG.STEAL_RANGE then
+						-- Beklemeden anında (insta) tetikle
+						pcall(function()
+							fireproximityprompt(desc, 0) -- Delta / Synapse destekli hızlı tetikleme
+						end)
+						pcall(function()
+							desc:InputHoldBegin()
+							desc:InputHoldEnd()
+						end)
+					end
+				end
+			end
+		end
+	end)
+end
+
+-- Otomatik başlat
+startInstaAutoGrab()
+
+-- ============================================================
+--  2. AIMBOT MANTIĞI
+-- ============================================================
 local _aimbotTarget = nil
 local _aimbotTargetPlr = nil
 
@@ -221,7 +256,7 @@ local function stopBatAimbot()
 	if hum2 then hum2.AutoRotate = true end
 end
 
--- Butona basınca Aimbot aç/kapat
+-- Sağ üstteki AIM butonuna basınca aç/kapat
 btn.MouseButton1Click:Connect(function()
 	if not autoBatEnabled then
 		startBatAimbot()
@@ -234,4 +269,4 @@ btn.MouseButton1Click:Connect(function()
 	end
 end)
 
-print("[Candy Hub] Delta sürümü başarıyla yüklendi! Aimbot butonu aktif.")
+print("[Candy Hub] Sağ üst aimbot butonu ve arkada çalışan 10 yarıçaplı Insta Auto Grab aktif!")
